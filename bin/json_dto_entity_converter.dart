@@ -108,20 +108,31 @@ void generateDtoFile(
   String dtoFilePath = "$infraPath${folderName}_dto.dart";
   String entityFilePath = "$domainPath$folderName.dart";
 
+  // Generate child DTOs and entities for nested objects
+  List<String> imports = [];
+  jsonData.forEach((key, value) {
+    if (value is Map) {
+      String childName = toPascalCase(key);
+      generateDtoFile(module, key, childName, value as Map<String, dynamic>, infraPath, domainPath);
+      imports.add("import 'package:test_app/infrastructure/$module/$key/${key}_dto.dart';");
+    }
+  });
+
   // Overwrite files if they already exist
   print("Generating DTO: $dtoFilePath...");
-  File(dtoFilePath).writeAsStringSync(generateDtoContent(module, folderName, pascalFolderName, jsonData));
+  File(dtoFilePath).writeAsStringSync(generateDtoContent(module, folderName, pascalFolderName, jsonData, imports));
 
   print("Generating Entity: $entityFilePath...");
-  File(entityFilePath).writeAsStringSync(generateEntityContent(module, folderName, pascalFolderName, jsonData));
+  File(entityFilePath).writeAsStringSync(generateEntityContent(module, folderName, pascalFolderName, jsonData, imports));
 
   print("✅ DTO and entity files created successfully!");
 }
 
-String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData) {
+String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
   buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
+  imports.forEach(buffer.writeln);
   buffer.writeln("");
   buffer.writeln("part '${folderName}_dto.freezed.dart';");
   buffer.writeln("part '${folderName}_dto.g.dart';");
@@ -131,7 +142,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("  factory ${pascalFolderName}Dto({");
 
   jsonData.forEach((key, value) {
-    buffer.writeln("    required ${getDartType(value)} $key,");
+    buffer.writeln("    required ${getDartType(key, value)} $key,");
   });
 
   buffer.writeln("  }) = _${pascalFolderName}Dto;");
@@ -152,11 +163,12 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   return buffer.toString();
 }
 
-String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData) {
+String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("class $pascalFolderName {");
+  imports.forEach(buffer.writeln);
   jsonData.forEach((key, value) {
-    buffer.writeln("  final ${getDartType(value)} $key;");
+    buffer.writeln("  final ${getDartType(key, value)} $key;");
   });
 
   buffer.writeln("");
@@ -175,11 +187,11 @@ String toPascalCase(String text) {
   return text.split('_').map((e) => e[0].toUpperCase() + e.substring(1)).join();
 }
 
-String getDartType(dynamic value) {
+String getDartType(String key, dynamic value) {
   if (value is int) return "int";
   if (value is double) return "double";
   if (value is bool) return "bool";
-  if (value is List) return "List<${getDartType(value.first)}>";
-  if (value is Map) return "${toPascalCase(value.keys.first)}Dto"; // Create DTO for nested object
+  if (value is List) return "List<${getDartType(key, value.first)}>";
+  if (value is Map) return "${toPascalCase(key)}Dto"; // Create DTO for nested object
   return "String";
 }
