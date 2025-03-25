@@ -30,18 +30,26 @@ void main() {
     print("Enter folder name:");
     String? folderName = stdin.readLineSync()?.trim();
 
-    if (module == null || folderName == null || module.isEmpty || folderName.isEmpty) {
+    if (module == null ||
+        folderName == null ||
+        module.isEmpty ||
+        folderName.isEmpty) {
       print("Module name and folder name cannot be empty!");
       return;
     }
 
     processJson(module, folderName, jsonData);
-    
+
     // Run build_runner after generating files
     print("\nRunning build_runner...");
-    Process.runSync('flutter', ['pub', 'run', 'build_runner', 'build', '--delete-conflicting-outputs']);
+    Process.runSync('flutter', [
+      'pub',
+      'run',
+      'build_runner',
+      'build',
+      '--delete-conflicting-outputs',
+    ]);
     print("✅ Build completed!");
-
   } catch (e) {
     print("Error parsing JSON: $e");
   }
@@ -50,7 +58,9 @@ void main() {
 void checkDependencies() {
   File pubspecFile = File("pubspec.yaml");
   if (!pubspecFile.existsSync()) {
-    print("Error: pubspec.yaml not found! Run this script inside a Flutter project.");
+    print(
+      "Error: pubspec.yaml not found! Run this script inside a Flutter project.",
+    );
     exit(1);
   }
 
@@ -58,7 +68,7 @@ void checkDependencies() {
     "freezed_annotation",
     "json_serializable",
     "build_runner",
-    "freezed"
+    "freezed",
   ];
   List<String> missingDeps = [];
 
@@ -70,7 +80,9 @@ void checkDependencies() {
   }
 
   if (missingDeps.isNotEmpty) {
-    print("\nThe following dependencies are missing: ${missingDeps.join(', ')}");
+    print(
+      "\nThe following dependencies are missing: ${missingDeps.join(', ')}",
+    );
     print("Do you want to add them? (y/n)");
     String? response = stdin.readLineSync();
     if (response?.toLowerCase() == 'y') {
@@ -86,7 +98,11 @@ void checkDependencies() {
   }
 }
 
-void processJson(String module, String folderName, Map<String, dynamic> jsonData) {
+void processJson(
+  String module,
+  String folderName,
+  Map<String, dynamic> jsonData,
+) {
   String pascalFolderName = toPascalCase(folderName);
   String infrastructurePath = "lib/infrastructure/$module/$folderName/";
   String domainPath = "lib/domain/$module/$folderName/";
@@ -94,7 +110,14 @@ void processJson(String module, String folderName, Map<String, dynamic> jsonData
   Directory(infrastructurePath).createSync(recursive: true);
   Directory(domainPath).createSync(recursive: true);
 
-  generateDtoFile(module, folderName, pascalFolderName, jsonData, infrastructurePath, domainPath);
+  generateDtoFile(
+    module,
+    folderName,
+    pascalFolderName,
+    jsonData,
+    infrastructurePath,
+    domainPath,
+  );
 }
 
 void generateDtoFile(
@@ -103,7 +126,7 @@ void generateDtoFile(
   String pascalFolderName,
   Map<String, dynamic> jsonData,
   String infraPath,
-  String domainPath
+  String domainPath,
 ) {
   String dtoFilePath = "$infraPath${folderName}_dto.dart";
   String entityFilePath = "$domainPath$folderName.dart";
@@ -111,48 +134,83 @@ void generateDtoFile(
   // Generate child DTOs and entities for nested objects
   List<String> imports = [];
   jsonData.forEach((key, value) {
-    if (value is Map) {
+    if (value is List && value.isNotEmpty && value.first is Map) {
       String childName = toPascalCase(key);
-      generateDtoFile(module, key, childName, value as Map<String, dynamic>, infraPath, domainPath);
-      imports.add("import 'package:test_app/infrastructure/$module/$key/${key}_dto.dart';");
+      generateDtoFile(
+        module,
+        key,
+        childName,
+        value.first,
+        infraPath,
+        domainPath,
+      );
+      imports.add(
+        "import 'package:test_app/infrastructure/$module/$key/${key}_dto.dart';",
+      );
     }
   });
 
   // Overwrite files if they already exist
   print("Generating DTO: $dtoFilePath...");
-  File(dtoFilePath).writeAsStringSync(generateDtoContent(module, folderName, pascalFolderName, jsonData, imports));
+  File(dtoFilePath).writeAsStringSync(
+    generateDtoContent(module, folderName, pascalFolderName, jsonData, imports),
+  );
 
   print("Generating Entity: $entityFilePath...");
-  File(entityFilePath).writeAsStringSync(generateEntityContent(module, folderName, pascalFolderName, jsonData, imports));
+  File(entityFilePath).writeAsStringSync(
+    generateEntityContent(
+      module,
+      folderName,
+      pascalFolderName,
+      jsonData,
+      imports,
+    ),
+  );
 
   print("✅ DTO and entity files created successfully!");
 }
 
-String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
+String generateDtoContent(
+  String module,
+  String folderName,
+  String pascalFolderName,
+  Map<String, dynamic> jsonData,
+  List<String> imports,
+) {
   StringBuffer buffer = StringBuffer();
-  buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
-  buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
+  buffer.writeln(
+    "import 'package:freezed_annotation/freezed_annotation.dart';",
+  );
+  buffer.writeln(
+    "import 'package:test_app/domain/$module/$folderName/$folderName.dart';",
+  );
   imports.forEach(buffer.writeln);
   buffer.writeln("");
   buffer.writeln("part '${folderName}_dto.freezed.dart';");
   buffer.writeln("part '${folderName}_dto.g.dart';");
   buffer.writeln("");
   buffer.writeln("@freezed");
-  buffer.writeln("class ${pascalFolderName}Dto with _\$${pascalFolderName}Dto {");
-  buffer.writeln("  factory ${pascalFolderName}Dto({");
+  buffer.writeln(
+    "class ${pascalFolderName}DTO with _\$${pascalFolderName}DTO {",
+  );
+  buffer.writeln("  factory ${pascalFolderName}DTO({");
 
   jsonData.forEach((key, value) {
-    buffer.writeln("    required ${getDartType(key, value)} $key,");
+    buffer.writeln(
+      "    required ${getDartType(key, value, isDto: true)} $key,",
+    );
   });
 
-  buffer.writeln("  }) = _${pascalFolderName}Dto;");
+  buffer.writeln("  }) = _${pascalFolderName}DTO;");
   buffer.writeln("");
-  buffer.writeln("  factory ${pascalFolderName}Dto.fromJson(Map<String, dynamic> json) =>");
-  buffer.writeln("      _\$${pascalFolderName}DtoFromJson(json);");
+  buffer.writeln(
+    "  factory ${pascalFolderName}DTO.fromJson(Map<String, dynamic> json) =>",
+  );
+  buffer.writeln("      _\$${pascalFolderName}DTOFromJson(json);");
   buffer.writeln("");
   buffer.writeln("  $pascalFolderName toDomain() {");
   buffer.writeln("    return $pascalFolderName(");
-  
+
   jsonData.keys.forEach((key) {
     buffer.writeln("      $key: $key,");
   });
@@ -163,12 +221,18 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   return buffer.toString();
 }
 
-String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
+String generateEntityContent(
+  String module,
+  String folderName,
+  String pascalFolderName,
+  Map<String, dynamic> jsonData,
+  List<String> imports,
+) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("class $pascalFolderName {");
   imports.forEach(buffer.writeln);
   jsonData.forEach((key, value) {
-    buffer.writeln("  final ${getDartType(key, value)} $key;");
+    buffer.writeln("  final ${getDartType(key, value, isDto: false)} $key;");
   });
 
   buffer.writeln("");
@@ -187,11 +251,13 @@ String toPascalCase(String text) {
   return text.split('_').map((e) => e[0].toUpperCase() + e.substring(1)).join();
 }
 
-String getDartType(String key, dynamic value) {
+String getDartType(String key, dynamic value, {required bool isDto}) {
   if (value is int) return "int";
   if (value is double) return "double";
   if (value is bool) return "bool";
-  if (value is List) return "List<${getDartType(key, value.first)}>";
-  if (value is Map) return "${toPascalCase(key)}Dto"; // Create DTO for nested object
+  if (value is List && value.isNotEmpty && value.first is Map) {
+    return "List<${toPascalCase(key)}${isDto ? 'DTO' : ''}>";
+  }
+  if (value is Map) return "${toPascalCase(key)}${isDto ? 'DTO' : ''}";
   return "String";
 }
