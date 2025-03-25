@@ -36,6 +36,12 @@ void main() {
     }
 
     processJson(module, folderName, jsonData);
+    
+    // Run build_runner after generating files
+    print("\nRunning build_runner...");
+    Process.runSync('flutter', ['pub', 'run', 'build_runner', 'build', '--delete-conflicting-outputs']);
+    print("✅ Build completed!");
+
   } catch (e) {
     print("Error parsing JSON: $e");
   }
@@ -102,29 +108,12 @@ void generateDtoFile(
   String dtoFilePath = "$infraPath${folderName}_dto.dart";
   String entityFilePath = "$domainPath$folderName.dart";
 
-  if (File(dtoFilePath).existsSync()) {
-    print("DTO file '$dtoFilePath' already exists. Enter a new name:");
-    String? newFolderName = stdin.readLineSync()?.trim();
-    if (newFolderName == null || newFolderName.isEmpty) {
-      print("Invalid name. Exiting.");
-      return;
-    }
-    folderName = newFolderName;
-    pascalFolderName = toPascalCase(folderName);
-    infraPath = "lib/infrastructure/$module/$folderName/";
-    domainPath = "lib/domain/$module/$folderName/";
-    dtoFilePath = "$infraPath${folderName}_dto.dart";
-    entityFilePath = "$domainPath$folderName.dart";
+  // Overwrite files if they already exist
+  print("Generating DTO: $dtoFilePath...");
+  File(dtoFilePath).writeAsStringSync(generateDtoContent(module, folderName, pascalFolderName, jsonData));
 
-    Directory(infraPath).createSync(recursive: true);
-    Directory(domainPath).createSync(recursive: true);
-  }
-
-  String dtoContent = generateDtoContent(module, folderName, pascalFolderName, jsonData);
-  File(dtoFilePath).writeAsStringSync(dtoContent);
-
-  String entityContent = generateEntityContent(module, folderName, pascalFolderName, jsonData);
-  File(entityFilePath).writeAsStringSync(entityContent);
+  print("Generating Entity: $entityFilePath...");
+  File(entityFilePath).writeAsStringSync(generateEntityContent(module, folderName, pascalFolderName, jsonData));
 
   print("✅ DTO and entity files created successfully!");
 }
