@@ -21,7 +21,6 @@ void main() {
 
   try {
     String jsonString = file.readAsStringSync().trim();
-    // Replace null values with empty strings for compatibility
     jsonString = jsonString.replaceAll(': null', ': ""');
     Map<String, dynamic> jsonData = jsonDecode(jsonString);
 
@@ -82,18 +81,20 @@ void checkDependencies() {
 }
 
 void processJson(String module, String folderName, Map<String, dynamic> jsonData) {
+  String pascalFolderName = toPascalCase(folderName);
   String infrastructurePath = "lib/infrastructure/$module/$folderName/";
   String domainPath = "lib/domain/$module/$folderName/";
 
   Directory(infrastructurePath).createSync(recursive: true);
   Directory(domainPath).createSync(recursive: true);
 
-  generateDtoFile(module, folderName, jsonData, infrastructurePath, domainPath);
+  generateDtoFile(module, folderName, pascalFolderName, jsonData, infrastructurePath, domainPath);
 }
 
 void generateDtoFile(
   String module,
   String folderName,
+  String pascalFolderName,
   Map<String, dynamic> jsonData,
   String infraPath,
   String domainPath
@@ -109,6 +110,7 @@ void generateDtoFile(
       return;
     }
     folderName = newFolderName;
+    pascalFolderName = toPascalCase(folderName);
     infraPath = "lib/infrastructure/$module/$folderName/";
     domainPath = "lib/domain/$module/$folderName/";
     dtoFilePath = "$infraPath${folderName}_dto.dart";
@@ -118,38 +120,38 @@ void generateDtoFile(
     Directory(domainPath).createSync(recursive: true);
   }
 
-  String dtoContent = generateDtoContent(folderName, jsonData);
+  String dtoContent = generateDtoContent(module, folderName, pascalFolderName, jsonData);
   File(dtoFilePath).writeAsStringSync(dtoContent);
 
-  String entityContent = generateEntityContent(folderName, jsonData);
+  String entityContent = generateEntityContent(module, folderName, pascalFolderName, jsonData);
   File(entityFilePath).writeAsStringSync(entityContent);
 
   print("✅ DTO and entity files created successfully!");
 }
 
-String generateDtoContent(String folderName, Map<String, dynamic> jsonData) {
+String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
-  buffer.writeln("import '../../domain/$folderName/$folderName.dart';");
+  buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
   buffer.writeln("");
   buffer.writeln("part '${folderName}_dto.freezed.dart';");
   buffer.writeln("part '${folderName}_dto.g.dart';");
   buffer.writeln("");
   buffer.writeln("@freezed");
-  buffer.writeln("class ${capitalize(folderName)}Dto with _\$${capitalize(folderName)}Dto {");
-  buffer.writeln("  factory ${capitalize(folderName)}Dto({");
+  buffer.writeln("class ${pascalFolderName}Dto with _\$${pascalFolderName}Dto {");
+  buffer.writeln("  factory ${pascalFolderName}Dto({");
 
   jsonData.forEach((key, value) {
     buffer.writeln("    required ${getDartType(value)} $key,");
   });
 
-  buffer.writeln("  }) = _${capitalize(folderName)}Dto;");
+  buffer.writeln("  }) = _${pascalFolderName}Dto;");
   buffer.writeln("");
-  buffer.writeln("  factory ${capitalize(folderName)}Dto.fromJson(Map<String, dynamic> json) =>");
-  buffer.writeln("      _\$${capitalize(folderName)}DtoFromJson(json);");
+  buffer.writeln("  factory ${pascalFolderName}Dto.fromJson(Map<String, dynamic> json) =>");
+  buffer.writeln("      _\$${pascalFolderName}DtoFromJson(json);");
   buffer.writeln("");
-  buffer.writeln("  ${capitalize(folderName)} toDomain() {");
-  buffer.writeln("    return ${capitalize(folderName)}(");
+  buffer.writeln("  $pascalFolderName toDomain() {");
+  buffer.writeln("    return $pascalFolderName(");
   
   jsonData.keys.forEach((key) {
     buffer.writeln("      $key: $key,");
@@ -161,15 +163,15 @@ String generateDtoContent(String folderName, Map<String, dynamic> jsonData) {
   return buffer.toString();
 }
 
-String generateEntityContent(String folderName, Map<String, dynamic> jsonData) {
+String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData) {
   StringBuffer buffer = StringBuffer();
-  buffer.writeln("class ${capitalize(folderName)} {");
+  buffer.writeln("class $pascalFolderName {");
   jsonData.forEach((key, value) {
     buffer.writeln("  final ${getDartType(value)} $key;");
   });
 
   buffer.writeln("");
-  buffer.writeln("  ${capitalize(folderName)}({");
+  buffer.writeln("  $pascalFolderName({");
 
   jsonData.keys.forEach((key) {
     buffer.writeln("    required this.$key,");
@@ -180,8 +182,8 @@ String generateEntityContent(String folderName, Map<String, dynamic> jsonData) {
   return buffer.toString();
 }
 
-String capitalize(String text) {
-  return text.isNotEmpty ? text[0].toUpperCase() + text.substring(1) : text;
+String toPascalCase(String text) {
+  return text.split('_').map((e) => e[0].toUpperCase() + e.substring(1)).join();
 }
 
 String getDartType(dynamic value) {
@@ -189,6 +191,6 @@ String getDartType(dynamic value) {
   if (value is double) return "double";
   if (value is bool) return "bool";
   if (value is List) return "List<${getDartType(value.first)}>";
-  if (value is Map) return "Map<String, dynamic>";
+  if (value is Map) return "${toPascalCase(value.keys.first)}Dto"; // Create DTO for nested object
   return "String";
 }
