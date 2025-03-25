@@ -4,29 +4,38 @@ import 'dart:io';
 void main() {
   checkDependencies();
 
-  print("Enter module name:");
-  String? module = stdin.readLineSync()?.trim();
+  print("Enter JSON file path:");
+  String? filePath = stdin.readLineSync()?.trim();
 
-  print("Enter folder name:");
-  String? folderName = stdin.readLineSync()?.trim();
-
-  if (module == null ||
-      folderName == null ||
-      module.isEmpty ||
-      folderName.isEmpty) {
-    print("Module name and folder name cannot be empty!");
+  if (filePath == null || filePath.isEmpty) {
+    print("Error: No file path provided.");
     return;
   }
 
-  print("Paste your JSON data:");
-  String? jsonString = stdin.readLineSync();
-  if (jsonString == null || jsonString.isEmpty) {
-    print("Invalid JSON input.");
+  File file = File(filePath);
+
+  if (!file.existsSync()) {
+    print("Error: File not found at $filePath");
     return;
   }
 
   try {
+    String jsonString = file.readAsStringSync().trim();
+    // Replace null values with empty strings for compatibility
+    jsonString = jsonString.replaceAll(': null', ': ""');
     Map<String, dynamic> jsonData = jsonDecode(jsonString);
+
+    print("Enter module name:");
+    String? module = stdin.readLineSync()?.trim();
+
+    print("Enter folder name:");
+    String? folderName = stdin.readLineSync()?.trim();
+
+    if (module == null || folderName == null || module.isEmpty || folderName.isEmpty) {
+      print("Module name and folder name cannot be empty!");
+      return;
+    }
+
     processJson(module, folderName, jsonData);
   } catch (e) {
     print("Error parsing JSON: $e");
@@ -36,9 +45,7 @@ void main() {
 void checkDependencies() {
   File pubspecFile = File("pubspec.yaml");
   if (!pubspecFile.existsSync()) {
-    print(
-      "Error: pubspec.yaml not found! Run this script inside a Flutter project.",
-    );
+    print("Error: pubspec.yaml not found! Run this script inside a Flutter project.");
     exit(1);
   }
 
@@ -46,7 +53,7 @@ void checkDependencies() {
     "freezed_annotation",
     "json_serializable",
     "build_runner",
-    "freezed",
+    "freezed"
   ];
   List<String> missingDeps = [];
 
@@ -58,9 +65,7 @@ void checkDependencies() {
   }
 
   if (missingDeps.isNotEmpty) {
-    print(
-      "\nThe following dependencies are missing: ${missingDeps.join(', ')}",
-    );
+    print("\nThe following dependencies are missing: ${missingDeps.join(', ')}");
     print("Do you want to add them? (y/n)");
     String? response = stdin.readLineSync();
     if (response?.toLowerCase() == 'y') {
@@ -76,19 +81,13 @@ void checkDependencies() {
   }
 }
 
-void processJson(
-  String module,
-  String folderName,
-  Map<String, dynamic> jsonData,
-) {
+void processJson(String module, String folderName, Map<String, dynamic> jsonData) {
   String infrastructurePath = "lib/infrastructure/$module/$folderName/";
   String domainPath = "lib/domain/$module/$folderName/";
 
-  // Ensure directories exist
   Directory(infrastructurePath).createSync(recursive: true);
   Directory(domainPath).createSync(recursive: true);
 
-  // Create DTO and entity files
   generateDtoFile(module, folderName, jsonData, infrastructurePath, domainPath);
 }
 
@@ -97,12 +96,11 @@ void generateDtoFile(
   String folderName,
   Map<String, dynamic> jsonData,
   String infraPath,
-  String domainPath,
+  String domainPath
 ) {
   String dtoFilePath = "$infraPath${folderName}_dto.dart";
   String entityFilePath = "$domainPath$folderName.dart";
 
-  // Check if file exists and prompt for a new name
   if (File(dtoFilePath).existsSync()) {
     print("DTO file '$dtoFilePath' already exists. Enter a new name:");
     String? newFolderName = stdin.readLineSync()?.trim();
@@ -116,36 +114,29 @@ void generateDtoFile(
     dtoFilePath = "$infraPath${folderName}_dto.dart";
     entityFilePath = "$domainPath$folderName.dart";
 
-    // Ensure new directories exist
     Directory(infraPath).createSync(recursive: true);
     Directory(domainPath).createSync(recursive: true);
   }
 
-  // Generate DTO content
   String dtoContent = generateDtoContent(folderName, jsonData);
   File(dtoFilePath).writeAsStringSync(dtoContent);
 
-  // Generate entity content
   String entityContent = generateEntityContent(folderName, jsonData);
   File(entityFilePath).writeAsStringSync(entityContent);
 
-  print("DTO and entity files created successfully!");
+  print("✅ DTO and entity files created successfully!");
 }
 
 String generateDtoContent(String folderName, Map<String, dynamic> jsonData) {
   StringBuffer buffer = StringBuffer();
-  buffer.writeln(
-    "import 'package:freezed_annotation/freezed_annotation.dart';",
-  );
+  buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
   buffer.writeln("import '../../domain/$folderName/$folderName.dart';");
   buffer.writeln("");
   buffer.writeln("part '${folderName}_dto.freezed.dart';");
   buffer.writeln("part '${folderName}_dto.g.dart';");
   buffer.writeln("");
   buffer.writeln("@freezed");
-  buffer.writeln(
-    "class ${capitalize(folderName)}Dto with _\$${capitalize(folderName)}Dto {",
-  );
+  buffer.writeln("class ${capitalize(folderName)}Dto with _\$${capitalize(folderName)}Dto {");
   buffer.writeln("  factory ${capitalize(folderName)}Dto({");
 
   jsonData.forEach((key, value) {
@@ -154,14 +145,12 @@ String generateDtoContent(String folderName, Map<String, dynamic> jsonData) {
 
   buffer.writeln("  }) = _${capitalize(folderName)}Dto;");
   buffer.writeln("");
-  buffer.writeln(
-    "  factory ${capitalize(folderName)}Dto.fromJson(Map<String, dynamic> json) =>",
-  );
+  buffer.writeln("  factory ${capitalize(folderName)}Dto.fromJson(Map<String, dynamic> json) =>");
   buffer.writeln("      _\$${capitalize(folderName)}DtoFromJson(json);");
   buffer.writeln("");
   buffer.writeln("  ${capitalize(folderName)} toDomain() {");
   buffer.writeln("    return ${capitalize(folderName)}(");
-
+  
   jsonData.keys.forEach((key) {
     buffer.writeln("      $key: $key,");
   });
