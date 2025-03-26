@@ -154,7 +154,7 @@ void generateDtoFile(
   File(dtoFilePath).writeAsStringSync(generateDtoContent(module, folderName, pascalFolderName, jsonData, imports, useParentFolder));
 
   print("Generating Entity: $entityFilePath...");
-  File(entityFilePath).writeAsStringSync(generateEntityContent(module, folderName, pascalFolderName, jsonData, imports));
+  File(entityFilePath).writeAsStringSync(generateEntityContent(module, folderName, pascalFolderName, jsonData, imports, useParentFolder));
 
   print("✅ DTO and entity files created successfully!");
 }
@@ -225,12 +225,14 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   return buffer.toString();
 }
 
-
-String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
+String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports, bool useParentFolder) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
 
-  // Ensure Entity imports DTO from `infrastructure`
+  // If folderName is empty, use module name as the folder name
+  String actualFolderName = folderName.isEmpty ? module : folderName;
+
+  // Ensure DTO imports from `infrastructure`
   imports = imports.map((import) {
     return import.replaceAll("package:test_app/domain/", "package:test_app/infrastructure/")
                  .replaceAll(".dart';", "_dto.dart';") // Ensure correct DTO import
@@ -240,8 +242,8 @@ String generateEntityContent(String module, String folderName, String pascalFold
   imports.forEach(buffer.writeln);
 
   buffer.writeln("");
-  buffer.writeln("part '${folderName}.freezed.dart';");
-  buffer.writeln("part '${folderName}.g.dart';");
+  buffer.writeln("part '${actualFolderName}.freezed.dart';");
+  buffer.writeln("part '${actualFolderName}.g.dart';");
   buffer.writeln("");
   buffer.writeln("@freezed");
   buffer.writeln("class $pascalFolderName with _\$$pascalFolderName {");
@@ -254,7 +256,9 @@ String generateEntityContent(String module, String folderName, String pascalFold
 
   buffer.writeln("  }) = _$pascalFolderName;");
   buffer.writeln("");
-  buffer.writeln("  static const empty = $pascalFolderName(");
+
+  // ✅ Use `factory QuickPicks.empty()` instead of `static const empty`
+  buffer.writeln("  factory $pascalFolderName.empty() => $pascalFolderName(");
   jsonData.forEach((key, value) {
     buffer.writeln("    $key: ${getDefaultValue(key, value)},");
   });
