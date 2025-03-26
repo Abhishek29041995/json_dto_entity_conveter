@@ -144,6 +144,7 @@ void generateDtoFile(
   print("✅ DTO and entity files created successfully!");
 }
 
+
 String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
@@ -213,6 +214,9 @@ String generateEntityContent(String module, String folderName, String pascalFold
 
   imports.forEach(buffer.writeln);
 
+  buffer.writeln("");
+  buffer.writeln("part '${folderName}.freezed.dart';");
+  buffer.writeln("part '${folderName}.g.dart';");
   buffer.writeln("");
   buffer.writeln("@freezed");
   buffer.writeln("class $pascalFolderName with _\$$pascalFolderName {");
