@@ -105,19 +105,23 @@ void generateDtoFile(
   String infraPath,
   String domainPath
 ) {
-  String dtoFilePath = "$infraPath${folderName}_dto.dart";
-  String entityFilePath = "$domainPath$folderName.dart";
+  // Correct folder paths to avoid nested folder creation
+  String infraFolderPath = infraPath.endsWith('/') ? infraPath : "$infraPath/";
+  String domainFolderPath = domainPath.endsWith('/') ? domainPath : "$domainPath/";
+
+  String dtoFilePath = "${infraFolderPath}${folderName}_dto.dart";
+  String entityFilePath = "${domainFolderPath}${folderName}.dart";
 
   // Generate child DTOs and entities for nested objects
   List<String> imports = [];
   jsonData.forEach((key, value) {
     if (value is List && value.isNotEmpty && value.first is Map) {
       String childName = toPascalCase(key);
-      generateDtoFile(module, key, childName, value.first, infraPath, domainPath);
+      generateDtoFile(module, key, childName, value.first, infraFolderPath, domainFolderPath);
       imports.add("import 'package:test_app/domain/$module/$key.dart';");
     } else if (value is Map) {
       String childName = toPascalCase(key);
-      generateDtoFile(module, key, childName, value as Map<String, dynamic>, infraPath, domainPath);
+      generateDtoFile(module, key, childName, value as Map<String, dynamic>, infraFolderPath, domainFolderPath);
       imports.add("import 'package:test_app/domain/$module/$key.dart';");
     }
   });
@@ -151,7 +155,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
       buffer.writeln("    @Default(${toPascalCase(key)}DTO.empty())");
       buffer.writeln("    @JsonKey(name: '$key') ${toPascalCase(key)}DTO? $key,");
     } else if (value is List) {
-      // Use defaultValue for lists
+      // Use defaultValue for lists and generate DTO for list items
       buffer.writeln("    @JsonKey(name: '$key', defaultValue: const []) List<${getListType(key, value)}> $key,");
     } else {
       // Use defaultValue for other types
@@ -229,7 +233,20 @@ String getDartType(String key, dynamic value, {required bool isDto}) {
 
 String getListType(String key, List<dynamic> value) {
   if (value.isNotEmpty && value.first is Map) {
+    // Generate a DTO for the list items
     return "${toPascalCase(key)}DTO";
+  }
+  if (value.isNotEmpty && value.first is String) {
+    return "String";
+  }
+  if (value.isNotEmpty && value.first is int) {
+    return "int";
+  }
+  if (value.isNotEmpty && value.first is double) {
+    return "double";
+  }
+  if (value.isNotEmpty && value.first is bool) {
+    return "bool";
   }
   return "dynamic";
 }
