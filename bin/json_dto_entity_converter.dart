@@ -164,11 +164,14 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
 
+  // If folderName is empty, use module name as the folder name
+  String actualFolderName = folderName.isEmpty ? module : folderName;
+
   // Ensure correct domain import without an extra folder when no parent folder is used
   if (useParentFolder) {
-    buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
+    buffer.writeln("import 'package:test_app/domain/$module/$actualFolderName/$actualFolderName.dart';");
   } else {
-    buffer.writeln("import 'package:test_app/domain/$module/$folderName.dart';");
+    buffer.writeln("import 'package:test_app/domain/$module/$actualFolderName.dart';");
   }
 
   // Ensure DTO imports from `infrastructure`
@@ -181,8 +184,8 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   imports.forEach(buffer.writeln);
 
   buffer.writeln("");
-  buffer.writeln("part '${folderName}_dto.freezed.dart';");
-  buffer.writeln("part '${folderName}_dto.g.dart';");
+  buffer.writeln("part '${actualFolderName}_dto.freezed.dart';");
+  buffer.writeln("part '${actualFolderName}_dto.g.dart';");
   buffer.writeln("");
   buffer.writeln("@freezed");
   buffer.writeln("class ${pascalFolderName}DTO with _\$${pascalFolderName}DTO {");
@@ -221,6 +224,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("}");
   return buffer.toString();
 }
+
 
 String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
