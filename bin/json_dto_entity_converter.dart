@@ -144,25 +144,6 @@ void generateDtoFile(
   print("✅ DTO and entity files created successfully!");
 }
 
-String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
-  StringBuffer buffer = StringBuffer();
-  buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
-  imports.forEach(buffer.writeln);
-  buffer.writeln("");
-  buffer.writeln("@freezed");
-  buffer.writeln("class $pascalFolderName with _\$$pascalFolderName {");
-  buffer.writeln("  factory $pascalFolderName({");
-
-  jsonData.forEach((key, value) {
-    buffer.writeln("    required ${getDartType(key, value, isDto: false)} $key,");
-  });
-
-  buffer.writeln("  }) = _$pascalFolderName;");
-  buffer.writeln("}");
-  return buffer.toString();
-}
-
-
 String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
@@ -174,6 +155,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("");
   buffer.writeln("@freezed");
   buffer.writeln("class ${pascalFolderName}DTO with _\$${pascalFolderName}DTO {");
+  buffer.writeln("  const ${pascalFolderName}DTO._();");
   buffer.writeln("  factory ${pascalFolderName}DTO({");
 
   jsonData.forEach((key, value) {
@@ -189,11 +171,47 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("      _\$${pascalFolderName}DTOFromJson(json);");
   buffer.writeln("");
   buffer.writeln("  static const empty = ${pascalFolderName}DTO(");
-
   jsonData.forEach((key, value) {
     buffer.writeln("    $key: ${getDefaultValue(key, value)},");
   });
+  buffer.writeln("  );");
+  buffer.writeln("");
+  buffer.writeln("  ${pascalFolderName} toDomain() => ${pascalFolderName}(");
+  jsonData.forEach((key, value) {
+    if (value is List) {
+      buffer.writeln("    $key: List<${toPascalCase(key)}DTO>.from($key).map((e) => e.toDomain()).toList(),");
+    } else if (value is Map) {
+      buffer.writeln("    $key: $key.toDomain(),");
+    } else {
+      buffer.writeln("    $key: $key,");
+    }
+  });
+  buffer.writeln("  );");
+  buffer.writeln("}");
+  return buffer.toString();
+}
 
+
+String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
+  StringBuffer buffer = StringBuffer();
+  buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
+  imports.forEach(buffer.writeln);
+  buffer.writeln("");
+  buffer.writeln("@freezed");
+  buffer.writeln("class $pascalFolderName with _\$$pascalFolderName {");
+  buffer.writeln("  const $pascalFolderName._();");
+  buffer.writeln("  factory $pascalFolderName({");
+
+  jsonData.forEach((key, value) {
+    buffer.writeln("    required ${getDartType(key, value, isDto: false)} $key,");
+  });
+
+  buffer.writeln("  }) = _$pascalFolderName;");
+  buffer.writeln("");
+  buffer.writeln("  factory $pascalFolderName.empty() => $pascalFolderName(");
+  jsonData.forEach((key, value) {
+    buffer.writeln("    $key: ${getDefaultValue(key, value)},");
+  });
   buffer.writeln("  );");
   buffer.writeln("}");
   return buffer.toString();
