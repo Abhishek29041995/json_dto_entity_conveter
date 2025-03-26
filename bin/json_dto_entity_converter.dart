@@ -241,13 +241,14 @@ String generateEntityContent(String module, String folderName, String pascalFold
   imports.forEach(buffer.writeln);
 
   buffer.writeln("");
-  buffer.writeln("part '${actualFolderName}.freezed.dart';");
-  buffer.writeln("part '${actualFolderName}.g.dart';");
+  buffer.writeln("part '${actualFolderName}.freezed.dart';"); // ✅ Removed `.g.dart`
   buffer.writeln("");
   buffer.writeln("@freezed");
   buffer.writeln("class $pascalFolderName with _\$$pascalFolderName {");
   buffer.writeln("  const $pascalFolderName._();");
-  buffer.writeln("  factory $pascalFolderName({");
+  
+  // ✅ Add `const` before factory constructor
+  buffer.writeln("  const factory $pascalFolderName({");
 
   jsonData.forEach((key, value) {
     buffer.writeln("    required ${getDartType(key, value, isDto: false)} $key,");
@@ -256,14 +257,12 @@ String generateEntityContent(String module, String folderName, String pascalFold
   buffer.writeln("  }) = _$pascalFolderName;");
   buffer.writeln("");
 
-  // ✅ Use `factory QuickPicks.empty()` instead of `static const empty`
+  // ✅ Keep `empty()` without `const`
   buffer.writeln("  factory $pascalFolderName.empty() => $pascalFolderName(");
   jsonData.forEach((key, value) {
     if (value is List && key.toLowerCase().contains("items")) {
-      // ✅ Convert `ItemsDTO[]` → `Items[]`
       buffer.writeln("    $key: <${toPascalCase(key)}>[],");
     } else if (value is Map && key.toLowerCase().contains("price")) {
-      // ✅ Convert `PriceDTO.empty()` → `Price.empty()`
       buffer.writeln("    $key: ${toPascalCase(key)}.empty(),");
     } else {
       buffer.writeln("    $key: ${getDefaultValue(key, value)},");
@@ -273,6 +272,7 @@ String generateEntityContent(String module, String folderName, String pascalFold
   buffer.writeln("}");
   return buffer.toString();
 }
+
 
 String getDefaultValue(String key, dynamic value) {
   if (value is List) {
