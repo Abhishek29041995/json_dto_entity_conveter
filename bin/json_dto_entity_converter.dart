@@ -228,8 +228,14 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   jsonData.forEach((key, value) {
     if (value is Map) {
       buffer.writeln("    @Default(${toPascalCase(key)}DTO.empty)");
+      buffer.writeln("    @JsonKey(name: '$key') ${toPascalCase(key)}DTO $key,");
+    } else if (value is List) {
+      // Use defaultValue for lists and generate DTO for list items
+      buffer.writeln("    @JsonKey(name: '$key', defaultValue: const []) List<${getListType(key, value)}> $key,");
+    } else {
+      // Use required for non-nullable fields
+      buffer.writeln("    @JsonKey(name: '$key', defaultValue: ${getDefaultValue(key, value)}) required ${getDartType(key, value, isDto: true)} $key,");
     }
-    buffer.writeln("    @JsonKey(name: '$key') required ${getDartType(key, value, isDto: true)} $key,");
   });
 
   buffer.writeln("  }) = _${pascalFolderName}DTO;");
@@ -238,14 +244,27 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("      _\$${pascalFolderName}DTOFromJson(json);");
   buffer.writeln("");
   buffer.writeln("  static const empty = ${pascalFolderName}DTO(");
+
   jsonData.forEach((key, value) {
-    buffer.writeln("    $key: ${getDefaultValue(key, value)},");
+    if (isNestedObject(value)) {
+      buffer.writeln("    $key: ${toPascalCase(key)}DTO.empty,");
+    } else if (value is List) {
+      buffer.writeln("    $key: const [],");
+    } else {
+      buffer.writeln("    $key: ${getDefaultValue(key, value)},");
+    }
   });
+
   buffer.writeln("  );");
   buffer.writeln("");
   buffer.writeln("  ${pascalFolderName} toDomain() => ${pascalFolderName}(");
+
   jsonData.forEach((key, value) {
-    if (value is List) {
+    if (value is List && !isNestedObject(value.first)) {
+      // Directly assign the list if it's not a list of objects
+      buffer.writeln("    $key: $key,");
+    } else if (value is List) {
+      // Map the list to .toDomain() if it's a list of objects
       buffer.writeln("    $key: $key.map((e) => e.toDomain()).toList(),");
     } else if (value is Map) {
       buffer.writeln("    $key: $key.toDomain(),");
@@ -253,6 +272,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
       buffer.writeln("    $key: $key,");
     }
   });
+
   buffer.writeln("  );");
   buffer.writeln("}");
   return buffer.toString();
@@ -338,4 +358,28 @@ String toPascalCase(String text) {
       .split(RegExp(r'[_\s-]')) 
       .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
       .join();
+}
+
+String getListType(String key, List<dynamic> value) {
+  if (value.isNotEmpty && value.first is Map) {
+    // Generate a DTO for the list items
+    return "${toPascalCase(key)}DTO";
+  }
+  if (value.isNotEmpty && value.first is String) {
+    return "String";
+  }
+  if (value.isNotEmpty && value.first is int) {
+    return "int";
+  }
+  if (value.isNotEmpty && value.first is double) {
+    return "double";
+  }
+  if (value.isNotEmpty && value.first is bool) {
+    return "bool";
+  }
+  return "dynamic";
+}
+
+bool isNestedObject(dynamic value) {
+  return value is Map || (value is List && value.isNotEmpty && value.first is Map);
 }
