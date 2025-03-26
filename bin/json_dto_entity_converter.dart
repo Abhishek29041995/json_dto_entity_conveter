@@ -98,6 +98,7 @@ void checkDependencies() {
   }
 }
 
+
 void processJson(String module, String folderName, Map<String, dynamic> jsonData, bool useParentFolder) {
   String pascalFolderName = toPascalCase(folderName.isEmpty ? module : folderName);
   String infrastructurePath = "lib/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}";
@@ -143,28 +144,6 @@ void generateDtoFile(
   print("✅ DTO and entity files created successfully!");
 }
 
-String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
-  StringBuffer buffer = StringBuffer();
-  buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
-  buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
-  imports.forEach(buffer.writeln);
-  buffer.writeln("");
-  buffer.writeln("part '${folderName}_dto.freezed.dart';");
-  buffer.writeln("part '${folderName}_dto.g.dart';");
-  buffer.writeln("");
-  buffer.writeln("@freezed");
-  buffer.writeln("class ${pascalFolderName}DTO with _\$${pascalFolderName}DTO {");
-  buffer.writeln("  factory ${pascalFolderName}DTO({");
-
-  jsonData.forEach((key, value) {
-    buffer.writeln("    @JsonKey(name: '$key', defaultValue: ${getDefaultValue(key, value)}) required ${getDartType(key, value, isDto: true)} $key,");
-  });
-
-  buffer.writeln("  }) = _${pascalFolderName}DTO;");
-  buffer.writeln("}");
-  return buffer.toString();
-}
-
 String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
@@ -183,8 +162,47 @@ String generateEntityContent(String module, String folderName, String pascalFold
   return buffer.toString();
 }
 
+
+String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
+  StringBuffer buffer = StringBuffer();
+  buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
+  buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
+  imports.forEach(buffer.writeln);
+  buffer.writeln("");
+  buffer.writeln("part '${folderName}_dto.freezed.dart';");
+  buffer.writeln("part '${folderName}_dto.g.dart';");
+  buffer.writeln("");
+  buffer.writeln("@freezed");
+  buffer.writeln("class ${pascalFolderName}DTO with _\$${pascalFolderName}DTO {");
+  buffer.writeln("  factory ${pascalFolderName}DTO({");
+
+  jsonData.forEach((key, value) {
+    if (value is Map) {
+      buffer.writeln("    @Default(${toPascalCase(key)}DTO.empty)");
+    }
+    buffer.writeln("    @JsonKey(name: '$key') required ${getDartType(key, value, isDto: true)} $key,");
+  });
+
+  buffer.writeln("  }) = _${pascalFolderName}DTO;");
+  buffer.writeln("");
+  buffer.writeln("  factory ${pascalFolderName}DTO.fromJson(Map<String, dynamic> json) =>");
+  buffer.writeln("      _\$${pascalFolderName}DTOFromJson(json);");
+  buffer.writeln("");
+  buffer.writeln("  static const empty = ${pascalFolderName}DTO(");
+
+  jsonData.forEach((key, value) {
+    buffer.writeln("    $key: ${getDefaultValue(key, value)},");
+  });
+
+  buffer.writeln("  );");
+  buffer.writeln("}");
+  return buffer.toString();
+}
+
 String getDefaultValue(String key, dynamic value) {
-  if (value is List) return "<${toPascalCase(key)}DTO>[]";
+  if (value is List) {
+    return isPrimitiveList(value) ? "<String>[]" : "<${toPascalCase(key)}DTO>[]";
+  }
   if (value is Map) return "${toPascalCase(key)}DTO.empty";
   if (value is int) return "0";
   if (value is double) return "0.0";
@@ -196,14 +214,20 @@ String getDartType(String key, dynamic value, {required bool isDto}) {
   if (value is int) return "int";
   if (value is double) return "double";
   if (value is bool) return "bool";
-  if (value is List) return "List<${toPascalCase(key)}${isDto ? 'DTO' : ''}>";
+  if (value is List) {
+    return isPrimitiveList(value) ? "List<String>" : "List<${toPascalCase(key)}${isDto ? 'DTO' : ''}>";
+  }
   if (value is Map) return "${toPascalCase(key)}${isDto ? 'DTO' : ''}";
   return "String";
 }
 
+bool isPrimitiveList(List<dynamic> value) {
+  return value.isEmpty || value.every((item) => item is String || item is int || item is double || item is bool);
+}
+
 String toPascalCase(String text) {
   return text
-      .split(RegExp(r'[_\s-]')) // Split by underscores, spaces, or hyphens
+      .split(RegExp(r'[_\s-]')) 
       .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
       .join();
 }
