@@ -34,15 +34,17 @@ void main() {
 
     print("Do you want to maintain a parent folder? (y/n)");
     String? maintainParentFolder = stdin.readLineSync()?.trim().toLowerCase();
-
     bool useParentFolder = maintainParentFolder == 'y';
+    String folderName = '';
 
-    print("Enter folder name:");
-    String? folderName = stdin.readLineSync()?.trim();
+    if (useParentFolder) {
+      print("Enter folder name:");
+      folderName = stdin.readLineSync()?.trim() ?? '';
 
-    if (folderName == null || folderName.isEmpty) {
-      print("Folder name cannot be empty!");
-      return;
+      if (folderName.isEmpty) {
+        print("Folder name cannot be empty!");
+        return;
+      }
     }
 
     processJson(module, folderName, jsonData, useParentFolder);
@@ -97,7 +99,7 @@ void checkDependencies() {
 }
 
 void processJson(String module, String folderName, Map<String, dynamic> jsonData, bool useParentFolder) {
-  String pascalFolderName = toPascalCase(folderName);
+  String pascalFolderName = toPascalCase(folderName.isEmpty ? module : folderName);
   String infrastructurePath = "lib/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}";
   String domainPath = "lib/domain/$module/${useParentFolder ? '$folderName/' : ''}";
 
@@ -116,10 +118,9 @@ void generateDtoFile(
   String domainPath,
   bool useParentFolder
 ) {
-  String dtoFilePath = "$infraPath${folderName}_dto.dart";
-  String entityFilePath = "$domainPath$folderName.dart";
+  String dtoFilePath = "$infraPath${folderName.isEmpty ? module : folderName}_dto.dart";
+  String entityFilePath = "$domainPath${folderName.isEmpty ? module : folderName}.dart";
 
-  // Generate child DTOs and entities for nested objects
   List<String> imports = [];
   jsonData.forEach((key, value) {
     if (value is List && value.isNotEmpty && value.first is Map) {
@@ -142,10 +143,6 @@ void generateDtoFile(
   print("✅ DTO and entity files created successfully!");
 }
 
-String toPascalCase(String text) {
-  return text.split('_').map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '').join();
-}
-
 String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
@@ -164,28 +161,14 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   });
 
   buffer.writeln("  }) = _${pascalFolderName}DTO;");
-  buffer.writeln("");
-  buffer.writeln("  factory ${pascalFolderName}DTO.fromJson(Map<String, dynamic> json) =>");
-  buffer.writeln("      _\$${pascalFolderName}DTOFromJson(json);");
   buffer.writeln("}");
   return buffer.toString();
-}
-
-String getDefaultValue(String key, dynamic value) {
-  if (value is List) return "<${toPascalCase(key)}DTO>[]";
-  if (value is Map) return "${toPascalCase(key)}DTO.empty";
-  if (value is int) return "0";
-  if (value is double) return "0.0";
-  if (value is bool) return "false";
-  return "''";
 }
 
 String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
   imports.forEach(buffer.writeln);
-  buffer.writeln("");
-  buffer.writeln("part '${folderName}.freezed.dart';");
   buffer.writeln("");
   buffer.writeln("@freezed");
   buffer.writeln("class $pascalFolderName with _\$$pascalFolderName {");
@@ -200,6 +183,15 @@ String generateEntityContent(String module, String folderName, String pascalFold
   return buffer.toString();
 }
 
+String getDefaultValue(String key, dynamic value) {
+  if (value is List) return "<${toPascalCase(key)}DTO>[]";
+  if (value is Map) return "${toPascalCase(key)}DTO.empty";
+  if (value is int) return "0";
+  if (value is double) return "0.0";
+  if (value is bool) return "false";
+  return "''";
+}
+
 String getDartType(String key, dynamic value, {required bool isDto}) {
   if (value is int) return "int";
   if (value is double) return "double";
@@ -209,4 +201,9 @@ String getDartType(String key, dynamic value, {required bool isDto}) {
   return "String";
 }
 
-
+String toPascalCase(String text) {
+  return text
+      .split(RegExp(r'[_\s-]')) // Split by underscores, spaces, or hyphens
+      .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+      .join();
+}
