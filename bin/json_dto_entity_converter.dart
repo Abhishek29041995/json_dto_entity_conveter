@@ -139,7 +139,7 @@ void generateDtoFile(
 String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
-  buffer.writeln("import 'package:test_app/domain/$module/$folderName.dart';");
+  buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
   imports.forEach(buffer.writeln);
   buffer.writeln("");
   buffer.writeln("part '${folderName}_dto.freezed.dart';");
@@ -151,15 +151,15 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
 
   jsonData.forEach((key, value) {
     if (isNestedObject(value)) {
-      // Use @Default for nested objects
-      buffer.writeln("    @Default(${toPascalCase(key)}DTO.empty())");
-      buffer.writeln("    @JsonKey(name: '$key') ${toPascalCase(key)}DTO? $key,");
+      // Use @Default for nested objects and remove nullable
+      buffer.writeln("    @Default(${toPascalCase(key)}DTO.empty)");
+      buffer.writeln("    @JsonKey(name: '$key') ${toPascalCase(key)}DTO $key,");
     } else if (value is List) {
       // Use defaultValue for lists and generate DTO for list items
       buffer.writeln("    @JsonKey(name: '$key', defaultValue: const []) List<${getListType(key, value)}> $key,");
     } else {
-      // Use defaultValue for other types
-      buffer.writeln("    @JsonKey(name: '$key', defaultValue: ${getDefaultValue(key, value)}) ${getDartType(key, value, isDto: true)} $key,");
+      // Use required for non-nullable fields
+      buffer.writeln("    @JsonKey(name: '$key', defaultValue: ${getDefaultValue(key, value)}) required ${getDartType(key, value, isDto: true)} $key,");
     }
   });
 
@@ -168,21 +168,19 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("  factory ${pascalFolderName}DTO.fromJson(Map<String, dynamic> json) =>");
   buffer.writeln("      _\$${pascalFolderName}DTOFromJson(json);");
   buffer.writeln("");
-  buffer.writeln("  $pascalFolderName toDomain() {");
-  buffer.writeln("    return $pascalFolderName(");
+  buffer.writeln("  static const empty = ${pascalFolderName}DTO(");
 
   jsonData.forEach((key, value) {
-    if (value is List) {
-      buffer.writeln("      $key: $key.map((e) => e.toDomain()).toList(),");
-    } else if (isNestedObject(value)) {
-      buffer.writeln("      $key: $key?.toDomain(),");
+    if (isNestedObject(value)) {
+      buffer.writeln("    $key: ${toPascalCase(key)}DTO.empty,");
+    } else if (value is List) {
+      buffer.writeln("    $key: const [],");
     } else {
-      buffer.writeln("      $key: $key,");
+      buffer.writeln("    $key: ${getDefaultValue(key, value)},");
     }
   });
 
-  buffer.writeln("    );");
-  buffer.writeln("  }");
+  buffer.writeln("  );");
   buffer.writeln("}");
   return buffer.toString();
 }
@@ -205,11 +203,18 @@ String toPascalCase(String text) {
 
 String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
+  buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
+  imports.forEach(buffer.writeln);
+  buffer.writeln("");
   buffer.writeln("class $pascalFolderName {");
   buffer.writeln("  const $pascalFolderName({");
 
   jsonData.forEach((key, value) {
-    buffer.writeln("    required this.$key,");
+    if (isNestedObject(value)) {
+      buffer.writeln("    this.$key,");
+    } else {
+      buffer.writeln("    required this.$key,");
+    }
   });
 
   buffer.writeln("  });");
