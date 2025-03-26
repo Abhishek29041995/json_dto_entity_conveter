@@ -149,9 +149,11 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
   buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
 
-  // Change imports to use `infrastructure` instead of `domain`
+  // Ensure DTO imports from `infrastructure`
   imports = imports.map((import) {
-    return import.replaceAll("package:test_app/domain/", "package:test_app/infrastructure/").replaceAll(".dart';", "_dto.dart';");
+    return import.replaceAll("package:test_app/domain/", "package:test_app/infrastructure/")
+                 .replaceAll(".dart';", "_dto.dart';") // Ensure correct DTO import
+                 .replaceAll("_dto_dto.dart", "_dto.dart"); // Fix duplicate `_dto_dto`
   }).toList();
 
   imports.forEach(buffer.writeln);
@@ -186,7 +188,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("  ${pascalFolderName} toDomain() => ${pascalFolderName}(");
   jsonData.forEach((key, value) {
     if (value is List) {
-      buffer.writeln("    $key: List<${toPascalCase(key)}DTO>.from($key).map((e) => e.toDomain()).toList(),");
+      buffer.writeln("    $key: $key.map((e) => e.toDomain()).toList(),");
     } else if (value is Map) {
       buffer.writeln("    $key: $key.toDomain(),");
     } else {
@@ -198,11 +200,19 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   return buffer.toString();
 }
 
-
 String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
+
+  // Ensure Entity imports DTO from `infrastructure`
+  imports = imports.map((import) {
+    return import.replaceAll("package:test_app/domain/", "package:test_app/infrastructure/")
+                 .replaceAll(".dart';", "_dto.dart';") // Ensure correct DTO import
+                 .replaceAll("_dto_dto.dart", "_dto.dart"); // Fix duplicate `_dto_dto`
+  }).toList();
+
   imports.forEach(buffer.writeln);
+
   buffer.writeln("");
   buffer.writeln("@freezed");
   buffer.writeln("class $pascalFolderName with _\$$pascalFolderName {");
@@ -215,7 +225,7 @@ String generateEntityContent(String module, String folderName, String pascalFold
 
   buffer.writeln("  }) = _$pascalFolderName;");
   buffer.writeln("");
-  buffer.writeln("  factory $pascalFolderName.empty() => $pascalFolderName(");
+  buffer.writeln("  static const empty = $pascalFolderName(");
   jsonData.forEach((key, value) {
     buffer.writeln("    $key: ${getDefaultValue(key, value)},");
   });
