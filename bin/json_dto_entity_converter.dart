@@ -146,7 +146,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("  factory ${pascalFolderName}DTO({");
 
   jsonData.forEach((key, value) {
-    buffer.writeln("    @JsonKey(defaultValue: ${getDefaultValue(value)}) required ${getDartType(key, value, isDto: true)} $key,");
+    buffer.writeln("    @JsonKey(name: '$key', defaultValue: ${getDefaultValue(key, value)}) required ${getDartType(key, value, isDto: true)} $key,");
   });
 
   buffer.writeln("  }) = _${pascalFolderName}DTO;");
@@ -173,13 +173,20 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   return buffer.toString();
 }
 
-String getDefaultValue(dynamic value) {
+String getDefaultValue(String key, dynamic value) {
   if (value is int) return "0";
   if (value is double) return "0.0";
   if (value is bool) return "false";
-  if (value is List) return "[]";
-  if (value is Map) return "{}";
-  return "''"; // Default return statement to ensure a String is always returned
+  if (value is List) return "<${toPascalCase(key)}DTO>[]";
+  if (value is Map) return "${toPascalCase(key)}DTO.empty";
+  return "''";
+}
+
+String toPascalCase(String text) {
+  return text
+      .split('_')
+      .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+      .join();
 }
 
 String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
@@ -187,7 +194,7 @@ String generateEntityContent(String module, String folderName, String pascalFold
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
   imports.forEach(buffer.writeln);
   buffer.writeln("");
-  buffer.writeln("part '$folderName.freezed.dart';");
+  buffer.writeln("part '${folderName}.freezed.dart';");
   buffer.writeln("");
   buffer.writeln("@freezed");
   buffer.writeln("class $pascalFolderName with _\$$pascalFolderName {");
@@ -202,10 +209,6 @@ String generateEntityContent(String module, String folderName, String pascalFold
   return buffer.toString();
 }
 
-String toPascalCase(String text) {
-  return text.split('_').map((e) => e[0].toUpperCase() + e.substring(1)).join();
-}
-
 String getDartType(String key, dynamic value, {required bool isDto}) {
   if (value is int) return "int";
   if (value is double) return "double";
@@ -214,3 +217,4 @@ String getDartType(String key, dynamic value, {required bool isDto}) {
   if (value is Map) return "${toPascalCase(key)}${isDto ? 'DTO' : ''}";
   return "String";
 }
+
