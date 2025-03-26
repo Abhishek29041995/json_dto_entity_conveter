@@ -136,7 +136,7 @@ void generateDtoFile(
   });
 
   print("Generating DTO: $dtoFilePath...");
-  File(dtoFilePath).writeAsStringSync(generateDtoContent(module, folderName, pascalFolderName, jsonData, imports));
+  File(dtoFilePath).writeAsStringSync(generateDtoContent(module, folderName, pascalFolderName, jsonData, imports, useParentFolder));
 
   print("Generating Entity: $entityFilePath...");
   File(entityFilePath).writeAsStringSync(generateEntityContent(module, folderName, pascalFolderName, jsonData, imports));
@@ -145,10 +145,16 @@ void generateDtoFile(
 }
 
 
-String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports) {
+String generateDtoContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports, bool useParentFolder) {
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
-  buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
+
+  // Ensure correct domain import without an extra folder when no parent folder is used
+  if (useParentFolder) {
+    buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
+  } else {
+    buffer.writeln("import 'package:test_app/domain/$module/$folderName.dart';");
+  }
 
   // Ensure DTO imports from `infrastructure`
   imports = imports.map((import) {
