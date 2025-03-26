@@ -50,14 +50,29 @@ void main() {
     processJson(module, folderName, jsonData, useParentFolder);
     
     // Run build_runner after generating files
-    print("\nRunning build_runner...");
-    Process.runSync('flutter', ['pub', 'run', 'build_runner', 'build', '--delete-conflicting-outputs']);
-    print("✅ Build completed!");
+    runBuildRunner();
 
   } catch (e) {
     print("Error parsing JSON: $e");
   }
 }
+
+void runBuildRunner() {
+  print("\nRunning build_runner...");
+
+  ProcessResult result = Process.runSync(
+    'flutter',
+    ['pub', 'run', 'build_runner', 'watch', '--delete-conflicting-outputs'],
+    runInShell: true,
+  );
+
+  if (result.exitCode != 0) {
+    print("❌ Build Runner failed with errors:\n${result.stderr}");
+  } else {
+    print("✅ Build completed successfully!");
+  }
+}
+
 
 void checkDependencies() {
   File pubspecFile = File("pubspec.yaml");
