@@ -127,11 +127,11 @@ void generateDtoFile(
     if (value is List && value.isNotEmpty && value.first is Map) {
       String childName = toPascalCase(key);
       generateDtoFile(module, key, childName, value.first, infraPath, domainPath, useParentFolder);
-      imports.add("import 'package:test_app/domain/$module/${useParentFolder ? '$folderName/' : ''}$key.dart';");
+      imports.add("import 'package:test_app/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${key}_dto.dart';");
     } else if (value is Map) {
       String childName = toPascalCase(key);
       generateDtoFile(module, key, childName, value as Map<String, dynamic>, infraPath, domainPath, useParentFolder);
-      imports.add("import 'package:test_app/domain/$module/${useParentFolder ? '$folderName/' : ''}$key.dart';");
+      imports.add("import 'package:test_app/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${key}_dto.dart';");
     }
   });
 
@@ -148,7 +148,14 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   StringBuffer buffer = StringBuffer();
   buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
   buffer.writeln("import 'package:test_app/domain/$module/$folderName/$folderName.dart';");
+
+  // Change imports to use `infrastructure` instead of `domain`
+  imports = imports.map((import) {
+    return import.replaceAll("package:test_app/domain/", "package:test_app/infrastructure/").replaceAll(".dart';", "_dto.dart';");
+  }).toList();
+
   imports.forEach(buffer.writeln);
+
   buffer.writeln("");
   buffer.writeln("part '${folderName}_dto.freezed.dart';");
   buffer.writeln("part '${folderName}_dto.g.dart';");
