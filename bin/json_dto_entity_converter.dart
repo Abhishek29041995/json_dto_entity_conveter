@@ -232,11 +232,10 @@ String generateEntityContent(String module, String folderName, String pascalFold
   // If folderName is empty, use module name as the folder name
   String actualFolderName = folderName.isEmpty ? module : folderName;
 
-  // Ensure DTO imports from `infrastructure`
+  // Ensure entity imports from `domain`, not `infrastructure`
   imports = imports.map((import) {
-    return import.replaceAll("package:test_app/domain/", "package:test_app/infrastructure/")
-                 .replaceAll(".dart';", "_dto.dart';") // Ensure correct DTO import
-                 .replaceAll("_dto_dto.dart", "_dto.dart"); // Fix duplicate `_dto_dto`
+    return import.replaceAll("package:test_app/infrastructure/", "package:test_app/domain/")
+                 .replaceAll("_dto.dart';", ".dart';"); // Convert DTO imports to entity imports
   }).toList();
 
   imports.forEach(buffer.writeln);
@@ -260,7 +259,12 @@ String generateEntityContent(String module, String folderName, String pascalFold
   // ✅ Use `factory QuickPicks.empty()` instead of `static const empty`
   buffer.writeln("  factory $pascalFolderName.empty() => $pascalFolderName(");
   jsonData.forEach((key, value) {
-    buffer.writeln("    $key: ${getDefaultValue(key, value)},");
+    // ✅ Convert `PriceDTO.empty()` → `Price.empty()`
+    if (value is Map && key.toLowerCase().contains("price")) {
+      buffer.writeln("    $key: ${toPascalCase(key)}.empty(),");
+    } else {
+      buffer.writeln("    $key: ${getDefaultValue(key, value)},");
+    }
   });
   buffer.writeln("  );");
   buffer.writeln("}");
