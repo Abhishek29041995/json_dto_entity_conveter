@@ -81,29 +81,62 @@ void checkDependencies() {
     exit(1);
   }
 
-  List<String> dependencies = [
-    "freezed_annotation",
-    "json_serializable",
-    "build_runner",
-    "freezed"
-  ];
+  // Define dependencies and their versions
+  Map<String, String> dependencies = {
+    "freezed_annotation": "^3.0.0",
+  };
+
+  Map<String, String> devDependencies = {
+    "freezed": "^3.0.4",
+    "build_runner": "^2.4.15",
+    "json_serializable": "^6.9.4",
+  };
+
   List<String> missingDeps = [];
+  List<String> missingDevDeps = [];
 
   List<String> lines = pubspecFile.readAsLinesSync();
-  for (var dep in dependencies) {
-    if (!lines.any((line) => line.trim().startsWith("$dep:"))) {
-      missingDeps.add(dep);
-    }
-  }
 
-  if (missingDeps.isNotEmpty) {
-    print("\nThe following dependencies are missing: ${missingDeps.join(', ')}");
-    print("Do you want to add them? (y/n)");
+  // Check for missing dependencies
+  dependencies.forEach((dep, version) {
+    if (!lines.any((line) => line.trim().startsWith("$dep:"))) {
+      missingDeps.add("$dep: $version");
+    }
+  });
+
+  // Check for missing dev_dependencies
+  devDependencies.forEach((dep, version) {
+    if (!lines.any((line) => line.trim().startsWith("$dep:"))) {
+      missingDevDeps.add("$dep: $version");
+    }
+  });
+
+  if (missingDeps.isNotEmpty || missingDevDeps.isNotEmpty) {
+    print("\nThe following dependencies are missing:");
+    if (missingDeps.isNotEmpty) {
+      print("Dependencies: ${missingDeps.join(', ')}");
+    }
+    if (missingDevDeps.isNotEmpty) {
+      print("Dev Dependencies: ${missingDevDeps.join(', ')}");
+    }
+
+    print("\nDo you want to add them? (y/n)");
     String? response = stdin.readLineSync();
     if (response?.toLowerCase() == 'y') {
-      for (var dep in missingDeps) {
-        Process.runSync('flutter', ['pub', 'add', dep]);
+      // Add missing dependencies
+      if (missingDeps.isNotEmpty) {
+        for (var dep in missingDeps) {
+          Process.runSync('flutter', ['pub', 'add', dep.split(':').first, '--sdk', 'flutter']);
+        }
       }
+
+      // Add missing dev_dependencies
+      if (missingDevDeps.isNotEmpty) {
+        for (var devDep in missingDevDeps) {
+          Process.runSync('flutter', ['pub', 'add', devDep.split(':').first, '--dev']);
+        }
+      }
+
       print("Dependencies added successfully.");
     } else {
       print("Skipping dependency installation.");
