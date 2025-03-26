@@ -259,8 +259,11 @@ String generateEntityContent(String module, String folderName, String pascalFold
   // ✅ Use `factory QuickPicks.empty()` instead of `static const empty`
   buffer.writeln("  factory $pascalFolderName.empty() => $pascalFolderName(");
   jsonData.forEach((key, value) {
-    // ✅ Convert `PriceDTO.empty()` → `Price.empty()`
-    if (value is Map && key.toLowerCase().contains("price")) {
+    if (value is List && key.toLowerCase().contains("items")) {
+      // ✅ Convert `ItemsDTO[]` → `Items[]`
+      buffer.writeln("    $key: <${toPascalCase(key)}>[],");
+    } else if (value is Map && key.toLowerCase().contains("price")) {
+      // ✅ Convert `PriceDTO.empty()` → `Price.empty()`
       buffer.writeln("    $key: ${toPascalCase(key)}.empty(),");
     } else {
       buffer.writeln("    $key: ${getDefaultValue(key, value)},");
