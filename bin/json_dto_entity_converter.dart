@@ -174,13 +174,15 @@ void generateDtoFile(
 
   List<String> imports = [];
   jsonData.forEach((key, value) {
-    String childName = toPascalCase(key).toLowerCase(); // Convert child name to lowercase
+    String childName = toPascalCase(key); // Convert key to PascalCase for class name
+    String childFileName = childName.toLowerCase(); // Convert key to lowercase for file name
+
     if (value is List && value.isNotEmpty && value.first is Map) {
-      generateDtoFile(module, key, childName, value.first, infraPath, domainPath, useParentFolder);
-      imports.add("import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childName}_dto.dart';");
+      generateDtoFile(module, childFileName, childName, value.first, infraPath, domainPath, useParentFolder);
+      imports.add("import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childFileName}_dto.dart';");
     } else if (value is Map) {
-      generateDtoFile(module, key, childName, value as Map<String, dynamic>, infraPath, domainPath, useParentFolder);
-      imports.add("import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childName}_dto.dart';");
+      generateDtoFile(module, childFileName, childName, value as Map<String, dynamic>, infraPath, domainPath, useParentFolder);
+      imports.add("import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childFileName}_dto.dart';");
     }
   });
 
@@ -254,9 +256,8 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
     String variableName = toCamelCase(key.startsWith('_') ? key.substring(1) : key); // Convert to camelCase
 
     if (isNestedObject(value)) {
-      buffer.writeln("    $variableName: ${toPascalCase(variableName)}DTO.empty,");
+      buffer.writeln("    $variableName: <${toPascalCase(variableName)}DTO>[],"); // Initialize as an empty list
     } else if (value is List) {
-      // Initialize list variables as empty lists
       buffer.writeln("    $variableName: const <${getListType(variableName, value, isDto: true)}>[],");
     } else {
       buffer.writeln("    $variableName: ${getDefaultValue(variableName, value)},");
@@ -365,8 +366,8 @@ bool isPrimitiveList(List<dynamic> value) {
 
 String toPascalCase(String text) {
   return text
-      .split(RegExp(r'[_\s-]')) 
-      .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+      .split(RegExp(r'[_\s-]')) // Split by underscores, spaces, or hyphens
+      .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1).toLowerCase() : '')
       .join();
 }
 
