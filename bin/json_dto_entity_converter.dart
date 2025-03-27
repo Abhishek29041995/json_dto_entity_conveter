@@ -57,19 +57,36 @@ void main() {
   }
 }
 
-void runBuildRunner() {
+void runBuildRunner() async {
   print("\nRunning build_runner...");
 
-  ProcessResult result = Process.runSync(
-    'flutter',
-    ['pub', 'run', 'build_runner', 'watch', '--delete-conflicting-outputs'],
-    runInShell: true,
-  );
+  try {
+    // Start the build_runner process
+    Process process = await Process.start(
+      'flutter',
+      ['pub', 'run', 'build_runner', 'watch', '--delete-conflicting-outputs'],
+      runInShell: true,
+    );
 
-  if (result.exitCode != 0) {
-    print("❌ Build Runner failed with errors:\n${result.stderr}");
-  } else {
-    print("✅ Build completed successfully!");
+    // Listen to stdout and stderr streams and print them in real-time
+    process.stdout.transform(utf8.decoder).listen((data) {
+      stdout.write(data);
+    });
+
+    process.stderr.transform(utf8.decoder).listen((data) {
+      stderr.write(data);
+    });
+
+    // Wait for the process to complete
+    int exitCode = await process.exitCode;
+
+    if (exitCode != 0) {
+      print("❌ Build Runner failed with exit code $exitCode.");
+    } else {
+      print("✅ Build completed successfully!");
+    }
+  } catch (e) {
+    print("❌ Error running build_runner: $e");
   }
 }
 
@@ -319,7 +336,7 @@ String generateEntityContent(String module, String folderName, String pascalFold
 
   buffer.writeln("  }) = _$pascalFolderName;");
   buffer.writeln("");
-  buffer.writeln("  factory $pascalFolderName.empty() => $pascalFolderName(");
+  buffer.writeln("  factory $pascalFolderName.empty() => const $pascalFolderName(");
 
   jsonData.forEach((key, value) {
     String variableName = key.startsWith('_') ? key.substring(1) : key; // Remove leading underscore for variable name
