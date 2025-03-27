@@ -227,7 +227,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("@freezed");
   buffer.writeln("class ${pascalFolderName}DTO with _\$${pascalFolderName}DTO {");
   buffer.writeln("  const ${pascalFolderName}DTO._();");
-  buffer.writeln("  factory ${pascalFolderName}DTO({");
+  buffer.writeln(" const factory ${pascalFolderName}DTO({");
 
   jsonData.forEach((key, value) {
     String variableName = toCamelCase(key.startsWith('_') ? key.substring(1) : key); // Convert to camelCase
