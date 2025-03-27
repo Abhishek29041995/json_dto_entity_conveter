@@ -313,7 +313,7 @@ String generateEntityContent(String module, String folderName, String pascalFold
   buffer.writeln("  const factory $pascalFolderName({");
 
   jsonData.forEach((key, value) {
-    String variableName = key.startsWith('_') ? key.substring(1) : key; // Remove leading underscore for variable name
+    String variableName = toCamelCase(key.startsWith('_') ? key.substring(1) : key); // Remove leading underscore for variable name
     buffer.writeln("    required ${getDartType(variableName, value, isDto: false)} $variableName,");
   });
 
@@ -322,7 +322,7 @@ String generateEntityContent(String module, String folderName, String pascalFold
   buffer.writeln("  factory $pascalFolderName.empty() => $pascalFolderName(");
 
   jsonData.forEach((key, value) {
-    String variableName = key.startsWith('_') ? key.substring(1) : key; // Remove leading underscore for variable name
+    String variableName = toCamelCase(key.startsWith('_') ? key.substring(1) : key); // Remove leading underscore for variable name
     if (value is List) {
       buffer.writeln("    $variableName: const <${getListType(variableName, value, isDto: false)}>[],");
     } else if (value is Map) {
