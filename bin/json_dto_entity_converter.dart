@@ -168,19 +168,19 @@ void generateDtoFile(
   bool useParentFolder
 ) {
   String projectName = getProjectName(); // Dynamically get the project name
-  String dtoFilePath = "$infraPath${folderName.isEmpty ? module : folderName}_dto.dart";
-  String entityFilePath = "$domainPath${folderName.isEmpty ? module : folderName}.dart";
+  String lowerCaseFolderName = folderName.isEmpty ? module.toLowerCase() : folderName.toLowerCase();
+  String dtoFilePath = "$infraPath${lowerCaseFolderName}_dto.dart";
+  String entityFilePath = "$domainPath${lowerCaseFolderName}.dart";
 
   List<String> imports = [];
   jsonData.forEach((key, value) {
+    String childName = toPascalCase(key).toLowerCase(); // Convert child name to lowercase
     if (value is List && value.isNotEmpty && value.first is Map) {
-      String childName = toPascalCase(key);
       generateDtoFile(module, key, childName, value.first, infraPath, domainPath, useParentFolder);
-      imports.add("import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${key}_dto.dart';");
+      imports.add("import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childName}_dto.dart';");
     } else if (value is Map) {
-      String childName = toPascalCase(key);
       generateDtoFile(module, key, childName, value as Map<String, dynamic>, infraPath, domainPath, useParentFolder);
-      imports.add("import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${key}_dto.dart';");
+      imports.add("import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childName}_dto.dart';");
     }
   });
 
@@ -228,7 +228,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("  factory ${pascalFolderName}DTO({");
 
   jsonData.forEach((key, value) {
-    String variableName = key.startsWith('_') ? key.substring(1) : key; // Remove leading underscore for variable name
+    String variableName = toCamelCase(key.startsWith('_') ? key.substring(1) : key); // Convert to camelCase
 
     if (value is Map) {
       // Objects are non-nullable and use @Default
@@ -239,7 +239,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
       buffer.writeln("    @JsonKey(name: '$key', defaultValue: const <${getListType(variableName, value, isDto: true)}>[]) required List<${getListType(variableName, value, isDto: true)}> $variableName,");
     } else {
       // Primitives are required and non-nullable
-      buffer.writeln("    @JsonKey(name: '$key', defaultValue: ${getDefaultValue(variableName, value)}) ${getDartType(variableName, value, isDto: true)} $variableName,");
+      buffer.writeln("    @JsonKey(name: '$key', defaultValue: ${getDefaultValue(variableName, value)}) required ${getDartType(variableName, value, isDto: true)} $variableName,");
     }
   });
 
@@ -251,11 +251,12 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("  static const empty = ${pascalFolderName}DTO(");
 
   jsonData.forEach((key, value) {
-    String variableName = key.startsWith('_') ? key.substring(1) : key; // Remove leading underscore for variable name
+    String variableName = toCamelCase(key.startsWith('_') ? key.substring(1) : key); // Convert to camelCase
 
     if (isNestedObject(value)) {
       buffer.writeln("    $variableName: ${toPascalCase(variableName)}DTO.empty,");
     } else if (value is List) {
+      // Initialize list variables as empty lists
       buffer.writeln("    $variableName: const <${getListType(variableName, value, isDto: true)}>[],");
     } else {
       buffer.writeln("    $variableName: ${getDefaultValue(variableName, value)},");
@@ -267,7 +268,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
   buffer.writeln("  ${pascalFolderName} toDomain() => ${pascalFolderName}(");
 
   jsonData.forEach((key, value) {
-    String variableName = key.startsWith('_') ? key.substring(1) : key; // Remove leading underscore for variable name
+    String variableName = toCamelCase(key.startsWith('_') ? key.substring(1) : key); // Convert to camelCase
 
     if (value is List && !isNestedObject(value.first)) {
       // Directly assign the list if it's not a list of objects
@@ -289,22 +290,21 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
 
 String generateEntityContent(String module, String folderName, String pascalFolderName, Map<String, dynamic> jsonData, List<String> imports, bool useParentFolder) {
   StringBuffer buffer = StringBuffer();
-  String projectName = getProjectName(); // Get the project name dynamically
-  buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
+  String projectName = getProjectName(); // Dynamically get the project name
+  String lowerCaseFolderName = folderName.isEmpty ? module.toLowerCase() : folderName.toLowerCase();
 
-  // If folderName is empty, use module name as the folder name
-  String actualFolderName = folderName.isEmpty ? module : folderName;
+  buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
 
   // Ensure entity imports from `domain`, not `infrastructure`
   imports = imports.map((import) {
-    return import.replaceAll("package:$projectName/", "package:$projectName/")
+    return import.replaceAll("package:$projectName/infrastructure/", "package:$projectName/domain/")
                  .replaceAll("_dto.dart';", ".dart';"); // Convert DTO imports to entity imports
   }).toList();
 
   imports.forEach(buffer.writeln);
 
   buffer.writeln("");
-  buffer.writeln("part '${actualFolderName}.freezed.dart';");
+  buffer.writeln("part '${lowerCaseFolderName}.freezed.dart';");
   buffer.writeln("");
   buffer.writeln("@freezed");
   buffer.writeln("class $pascalFolderName with _\$$pascalFolderName {");
@@ -368,6 +368,17 @@ String toPascalCase(String text) {
       .split(RegExp(r'[_\s-]')) 
       .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
       .join();
+}
+
+String toCamelCase(String text) {
+  if (text.isEmpty) return text;
+
+  // Split the text by underscores, spaces, or hyphens
+  List<String> words = text.split(RegExp(r'[_\s-]'));
+
+  // Convert the first word to lowercase and capitalize the rest
+  return words.first.toLowerCase() +
+      words.skip(1).map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1).toLowerCase() : '').join();
 }
 
 String getListType(String key, List<dynamic> value, {required bool isDto}) {
