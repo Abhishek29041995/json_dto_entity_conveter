@@ -167,6 +167,7 @@ void generateDtoFile(
   String domainPath,
   bool useParentFolder
 ) {
+  String projectName = getProjectName(); // Dynamically get the project name
   String dtoFilePath = "$infraPath${folderName.isEmpty ? module : folderName}_dto.dart";
   String entityFilePath = "$domainPath${folderName.isEmpty ? module : folderName}.dart";
 
@@ -175,11 +176,11 @@ void generateDtoFile(
     if (value is List && value.isNotEmpty && value.first is Map) {
       String childName = toPascalCase(key);
       generateDtoFile(module, key, childName, value.first, infraPath, domainPath, useParentFolder);
-      imports.add("import 'package:test_app/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${key}_dto.dart';");
+      imports.add("import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${key}_dto.dart';");
     } else if (value is Map) {
       String childName = toPascalCase(key);
       generateDtoFile(module, key, childName, value as Map<String, dynamic>, infraPath, domainPath, useParentFolder);
-      imports.add("import 'package:test_app/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${key}_dto.dart';");
+      imports.add("import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${key}_dto.dart';");
     }
   });
 
@@ -210,7 +211,7 @@ String generateDtoContent(String module, String folderName, String pascalFolderN
 
   // Ensure DTO imports from `infrastructure`
   imports = imports.map((import) {
-    return import.replaceAll("package:test_app/", "package:$projectName/")
+    return import.replaceAll("package:$projectName/", "package:$projectName/")
                  .replaceAll(".dart';", "_dto.dart';") // Ensure correct DTO import
                  .replaceAll("_dto_dto.dart", "_dto.dart"); // Fix duplicate `_dto_dto`
   }).toList();
@@ -296,7 +297,7 @@ String generateEntityContent(String module, String folderName, String pascalFold
 
   // Ensure entity imports from `domain`, not `infrastructure`
   imports = imports.map((import) {
-    return import.replaceAll("package:test_app/", "package:$projectName/")
+    return import.replaceAll("package:$projectName/", "package:$projectName/")
                  .replaceAll("_dto.dart';", ".dart';"); // Convert DTO imports to entity imports
   }).toList();
 
