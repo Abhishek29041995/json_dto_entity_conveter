@@ -21,8 +21,11 @@ void main() {
 
   try {
     String jsonString = file.readAsStringSync().trim();
-    jsonString = jsonString.replaceAll(': null', ': ""');
+    jsonString = jsonString.replaceAll(': null', ': ""'); // Replace null with empty string
     Map<String, dynamic> jsonData = jsonDecode(jsonString);
+
+    // Validate the JSON before processing
+    validateJson(jsonData);
 
     print("Enter module name:");
     String? module = stdin.readLineSync()?.trim();
@@ -523,4 +526,26 @@ String getProjectName() {
   }
 
   throw Exception("Error: Project name not found in pubspec.yaml.");
+}
+
+void validateJson(Map<String, dynamic> jsonData) {
+  jsonData.forEach((key, value) {
+    if (value == null) {
+      print("Warning: Key '$key' has a null value. Providing a default value.");
+    }
+    if (value is List && value.isEmpty) {
+      print("Warning: Key '$key' has an empty list.");
+    }
+    if (value is Map) {
+      // Recursively validate nested objects
+      validateJson(value as Map<String, dynamic>);
+    } else if (value is List) {
+      // Recursively validate nested lists
+      for (var item in value) {
+        if (item is Map) {
+          validateJson(item as Map<String, dynamic>);
+        }
+      }
+    }
+  });
 }
