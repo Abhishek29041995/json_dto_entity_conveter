@@ -303,7 +303,7 @@ String generateDtoContent(
     } else if (value is List) {
       // Lists are required and non-nullable
       buffer.writeln(
-          "    @JsonKey(name: '$key', defaultValue: const <${getListType(variableName, value, isDto: true)}>[]) required List<${getListType(variableName, value, isDto: true)}> $variableName,");
+          "    @JsonKey(name: '$key', defaultValue: <${getListType(variableName, value, isDto: true)}>[]) required List<${getListType(variableName, value, isDto: true)}> $variableName,");
     } else {
       // Primitives are required and non-nullable
       buffer.writeln(
@@ -329,7 +329,7 @@ String generateDtoContent(
     } else if (value is List) {
       // Assign an empty list for lists
       buffer.writeln(
-          "    $variableName: const <${getListType(variableName, value, isDto: true)}>[],");
+          "    $variableName: <${getListType(variableName, value, isDto: true)}>[],");
     } else {
       // Assign default values for primitives
       buffer.writeln(
@@ -418,7 +418,7 @@ String generateEntityContent(
 
     if (value is List) {
       buffer.writeln(
-          "    $variableName: const <${getListType(variableName, value, isDto: false)}>[],");
+          "    $variableName: <${getListType(variableName, value, isDto: false)}>[],");
     } else if (value is Map) {
       buffer
           .writeln("    $variableName: ${toPascalCase(variableName)}.empty(),");
