@@ -323,13 +323,15 @@ String generateDtoContent(
     String variableName = toCamelCase(
         key.startsWith('_') ? key.substring(1) : key); // Convert to camelCase
 
-    if (isNestedObject(value)) {
-      buffer.writeln(
-          "    $variableName: <${toPascalCase(variableName)}DTO>[],"); // Initialize as an empty list
+    if (value is Map) {
+      // Assign the `empty` constructor of the nested DTO
+      buffer.writeln("    $variableName: ${toPascalCase(variableName)}DTO.empty,");
     } else if (value is List) {
+      // Assign an empty list for lists
       buffer.writeln(
           "    $variableName: const <${getListType(variableName, value, isDto: true)}>[],");
     } else {
+      // Assign default values for primitives
       buffer.writeln(
           "    $variableName: ${getDefaultValue(variableName, value)},");
     }
