@@ -439,8 +439,8 @@ String getDefaultValue(String key, dynamic value) {
   }
   if (value is List) {
     return isPrimitiveList(value)
-        ? "const <${getListType(key, value, isDto: false)}>[]"
-        : "const <${toPascalCase(key)}DTO>[]";
+        ? "<${getListType(key, value, isDto: false)}>[]"
+        : "<${toPascalCase(key)}DTO>[]";
   }
   if (value is Map) return "${toPascalCase(key)}DTO.empty";
   if (value is int) return "0";
