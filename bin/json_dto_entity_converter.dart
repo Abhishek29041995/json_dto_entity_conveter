@@ -472,9 +472,9 @@ String toCamelCase(String text) {
 }
 
 String getListType(String key, List<dynamic> value, {required bool isDto}) {
-  // Check if the list is empty
-  if (value.isEmpty) {
-    return "dynamic"; // Default to `dynamic` for empty lists
+  // Check if the list is empty or contains only null values
+  if (value.isEmpty || value.every((item) => item == null)) {
+    return "dynamic"; // Default to `dynamic` for empty or null-only lists
   }
 
   // Check the type of the first non-null element in the list
