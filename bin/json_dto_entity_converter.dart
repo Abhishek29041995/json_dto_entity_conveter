@@ -205,19 +205,36 @@ void generateDtoFile(
 
     if (value is List) {
       // Handle lists with null or empty elements
-      if (value.isNotEmpty && value.first is Map) {
-        generateDtoFile(module, childFileName, childName, value.first, infraPath, domainPath, useParentFolder);
-        imports.add(
-            "import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childFileName}_dto.dart';");
+      if (value.isNotEmpty && value.first != null && value.first is Map) {
+        try {
+          generateDtoFile(module, childFileName, childName, value.first as Map<String, dynamic>, 
+                          infraPath, domainPath, useParentFolder);
+          imports.add(
+              "import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childFileName}_dto.dart';");
+        } catch (e) {
+          print("Warning: Failed to process list item for key: $key. Error: $e");
+          // Add a comment instead of an import
+          imports.add("// Failed to process list item for key: $key");
+        }
       } else {
         // Handle lists with null or primitive elements
         imports.add("// Skipping child DTO generation for key: $key (list with null or primitive elements)");
       }
+    } else if (value is Map && (value as Map).isNotEmpty) {
+      // Recursively generate child DTOs for non-empty maps
+      try {
+        generateDtoFile(module, childFileName, childName, value as Map<String, dynamic>, 
+                        infraPath, domainPath, useParentFolder);
+        imports.add(
+            "import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childFileName}_dto.dart';");
+      } catch (e) {
+        print("Warning: Failed to process map for key: $key. Error: $e");
+        // Add a comment instead of an import
+        imports.add("// Failed to process map for key: $key");
+      }
     } else if (value is Map) {
-      // Recursively generate child DTOs
-      generateDtoFile(module, childFileName, childName, value as Map<String, dynamic>, infraPath, domainPath, useParentFolder);
-      imports.add(
-          "import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childFileName}_dto.dart';");
+      // Handle empty maps
+      imports.add("// Skipping child DTO generation for key: $key (empty map)");
     }
   });
 
@@ -326,8 +343,8 @@ String generateDtoContent(
     String variableName = toCamelCase(
         key.startsWith('_') ? key.substring(1) : key); // Convert to camelCase
 
-    if (value is List && !isNestedObject(value.first)) {
-      // Directly assign the list if it's not a list of objects
+    if (value is List && (value.isEmpty || !(value.first is Map))) {
+      // Directly assign the list if it's empty or not a list of objects
       buffer.writeln("    $variableName: $variableName,");
     } else if (value is List) {
       // Map the list to .toDomain() if it's a list of objects
@@ -435,18 +452,22 @@ String getDartType(String key, dynamic value, {required bool isDto}) {
   if (value is double) return "double";
   if (value is bool) return "bool";
   if (value is List) {
-    return isPrimitiveList(value)
-        ? "List<String>"
-        : "List<${toPascalCase(key)}${isDto ? 'DTO' : ''}>";
+    return "List<${getListType(key, value, isDto: isDto)}>";
   }
   if (value is Map) return "${toPascalCase(key)}${isDto ? 'DTO' : ''}";
   return "String";
 }
 
 bool isPrimitiveList(List<dynamic> value) {
-  return value.isEmpty ||
-      value.every((item) =>
-          item is String || item is int || item is double || item is bool);
+  if (value.isEmpty) return true;
+  
+  // Check if all elements are primitive or null
+  return value.every((item) =>
+      item == null ||
+      item is String ||
+      item is int ||
+      item is double ||
+      item is bool);
 }
 
 String toPascalCase(String text) {
@@ -475,16 +496,23 @@ String toCamelCase(String text) {
 }
 
 String getListType(String key, List<dynamic> value, {required bool isDto}) {
-  // Check if the list is empty or contains only null values
-  if (value.isEmpty || value.every((item) => item == null)) {
-    return "dynamic"; // Default to `dynamic` for empty or null-only lists
+  // Check if the list is empty
+  if (value.isEmpty) {
+    return "dynamic"; // Default to `dynamic` for empty lists
   }
 
-  // Check the type of the first non-null element in the list
-  var firstNonNull = value.firstWhere((item) => item != null, orElse: () => null);
+  // Find the first non-null element
+  dynamic firstNonNull;
+  try {
+    firstNonNull = value.firstWhere((item) => item != null, orElse: () => null);
+  } catch (e) {
+    // Handle error and return a default type
+    return "dynamic";
+  }
 
+  // If all elements are null or firstNonNull is still null
   if (firstNonNull == null) {
-    return "dynamic"; // Default to `dynamic` if all elements are null
+    return "dynamic"; // Default to `dynamic` for lists with all null elements
   }
 
   if (firstNonNull is Map) {
@@ -507,8 +535,16 @@ String getListType(String key, List<dynamic> value, {required bool isDto}) {
 }
 
 bool isNestedObject(dynamic value) {
-  return value is Map ||
-      (value is List && value.isNotEmpty && value.first is Map);
+  if (value is Map) return true;
+  if (value is List && value.isNotEmpty) {
+    // Safely check if the first element is a Map
+    try {
+      return value.first is Map;
+    } catch (e) {
+      return false;
+    }
+  }
+  return false;
 }
 
 String getProjectName() {
