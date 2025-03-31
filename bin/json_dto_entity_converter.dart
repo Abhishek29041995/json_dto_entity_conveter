@@ -181,13 +181,14 @@ void processJson(String module, String folderName,
 }
 
 void generateDtoFile(
-    String module,
-    String folderName,
-    String pascalFolderName,
-    Map<String, dynamic> jsonData,
-    String infraPath,
-    String domainPath,
-    bool useParentFolder) {
+  String module,
+  String folderName,
+  String pascalFolderName,
+  Map<String, dynamic> jsonData,
+  String infraPath,
+  String domainPath,
+  bool useParentFolder,
+) {
   String projectName = getProjectName(); // Dynamically get the project name
   String lowerCaseFolderName =
       folderName.isEmpty ? module.toLowerCase() : folderName.toLowerCase();
@@ -196,37 +197,32 @@ void generateDtoFile(
 
   List<String> imports = [];
   jsonData.forEach((key, value) {
-    String childName =
-        toPascalCase(key); // Convert key to PascalCase for class name
-    String childFileName =
-        childName.toLowerCase(); // Convert key to lowercase for file name
+    String childName = toPascalCase(key); // Convert key to PascalCase for class name
+    String childFileName = childName.toLowerCase(); // Convert key to lowercase for file name
 
-    if (value is List && value.isNotEmpty && value.first is Map) {
-      generateDtoFile(module, childFileName, childName, value.first, infraPath,
-          domainPath, useParentFolder);
-      imports.add(
-          "import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childFileName}_dto.dart';");
+    if (value is List) {
+      // Handle lists with null or empty elements
+      if (value.isNotEmpty && value.first is Map) {
+        generateDtoFile(module, childFileName, childName, value.first, infraPath, domainPath, useParentFolder);
+        imports.add(
+            "import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childFileName}_dto.dart';");
+      } else {
+        // Handle lists with null or primitive elements
+        imports.add("// Skipping child DTO generation for key: $key (list with null or primitive elements)");
+      }
     } else if (value is Map) {
-      generateDtoFile(
-          module,
-          childFileName,
-          childName,
-          value as Map<String, dynamic>,
-          infraPath,
-          domainPath,
-          useParentFolder);
+      // Recursively generate child DTOs
+      generateDtoFile(module, childFileName, childName, value as Map<String, dynamic>, infraPath, domainPath, useParentFolder);
       imports.add(
           "import 'package:$projectName/infrastructure/$module/${useParentFolder ? '$folderName/' : ''}${childFileName}_dto.dart';");
     }
   });
 
   print("Generating DTO: $dtoFilePath...");
-  File(dtoFilePath).writeAsStringSync(generateDtoContent(module, folderName,
-      pascalFolderName, jsonData, imports, useParentFolder));
+  File(dtoFilePath).writeAsStringSync(generateDtoContent(module, folderName, pascalFolderName, jsonData, imports, useParentFolder));
 
   print("Generating Entity: $entityFilePath...");
-  File(entityFilePath).writeAsStringSync(generateEntityContent(module,
-      folderName, pascalFolderName, jsonData, imports, useParentFolder));
+  File(entityFilePath).writeAsStringSync(generateEntityContent(module, folderName, pascalFolderName, jsonData, imports, useParentFolder));
 
   print("✅ DTO and entity files created successfully!");
 }
