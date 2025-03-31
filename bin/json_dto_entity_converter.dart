@@ -416,16 +416,19 @@ String generateEntityContent(
 }
 
 String getDefaultValue(String key, dynamic value) {
+  if (value == null) {
+    return "null"; // Use `null` as the default value for nullable fields
+  }
   if (value is List) {
     return isPrimitiveList(value)
-        ? "<String>[]"
-        : "<${toPascalCase(key)}DTO>[]";
+        ? "const <${getListType(key, value, isDto: false)}>[]"
+        : "const <${toPascalCase(key)}DTO>[]";
   }
   if (value is Map) return "${toPascalCase(key)}DTO.empty";
   if (value is int) return "0";
   if (value is double) return "0.0";
   if (value is bool) return "false";
-  return "''";
+  return "''"; // Default to an empty string for other types
 }
 
 String getDartType(String key, dynamic value, {required bool isDto}) {
@@ -473,23 +476,35 @@ String toCamelCase(String text) {
 }
 
 String getListType(String key, List<dynamic> value, {required bool isDto}) {
-  if (value.isNotEmpty && value.first is Map) {
+  // Check if the list is empty
+  if (value.isEmpty) {
+    return "dynamic"; // Default to `dynamic` for empty lists
+  }
+
+  // Check the type of the first non-null element in the list
+  var firstNonNull = value.firstWhere((item) => item != null, orElse: () => null);
+
+  if (firstNonNull == null) {
+    return "dynamic"; // Default to `dynamic` if all elements are null
+  }
+
+  if (firstNonNull is Map) {
     // Generate a DTO for the list items if isDto is true, otherwise use the entity
     return "${toPascalCase(key)}${isDto ? 'DTO' : ''}";
   }
-  if (value.isNotEmpty && value.first is String) {
+  if (firstNonNull is String) {
     return "String";
   }
-  if (value.isNotEmpty && value.first is int) {
+  if (firstNonNull is int) {
     return "int";
   }
-  if (value.isNotEmpty && value.first is double) {
+  if (firstNonNull is double) {
     return "double";
   }
-  if (value.isNotEmpty && value.first is bool) {
+  if (firstNonNull is bool) {
     return "bool";
   }
-  return "dynamic";
+  return "dynamic"; // Default to `dynamic` for unknown types
 }
 
 bool isNestedObject(dynamic value) {
